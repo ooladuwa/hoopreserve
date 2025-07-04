@@ -1,47 +1,38 @@
-import React, { useState } from 'react';
-import { View, TextInput, Button, Alert, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import { supabase } from './src/lib/supabase';
 
-export default function App() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const Stack = createNativeStackNavigator();
 
-  const handleSignUp = async () => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+export default function App() {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
     });
 
-    if (error) Alert.alert('Error', error.message);
-    else Alert.alert('Signed up!', 'Check your email for confirmation.');
-  };
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Email"
-        onChangeText={setEmail}
-        value={email}
-        autoCapitalize="none"
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Password"
-        onChangeText={setPassword}
-        value={password}
-        secureTextEntry
-        style={styles.input}
-      />
-      <Button title="Sign Up" onPress={handleSignUp} />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        {user ? (
+          <Stack.Screen name="Home" component={HomeScreen} />
+        ) : (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Signup" component={SignupScreen} />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1, justifyContent: 'center', padding: 20,
-  },
-  input: {
-    borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5,
-  },
-});

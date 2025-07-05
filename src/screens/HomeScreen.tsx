@@ -1,23 +1,16 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { View, Button, StyleSheet } from 'react-native';
 
-const HomeScreen = () => {
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
+export default function HomeScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🏀 Welcome to Hoop Reserve!</Text>
-      <Button title="Log Out" onPress={handleLogout} />
+      <Button title="View Courts" onPress={() => navigation.navigate('Courts')} />
+      <Button title="My Bookings" onPress={() => navigation.navigate('My Bookings')} />
+      <Button title="Log Out" onPress={() => navigation.navigate('Login')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 24, marginBottom: 20 },
+  container: { flex: 1, justifyContent: 'center', padding: 20 },
 });
-
-export default HomeScreen

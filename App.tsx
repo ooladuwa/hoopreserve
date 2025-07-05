@@ -6,6 +6,7 @@ import SignupScreen from './src/screens/SignupScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import CourtListScreen from './src/screens/CourtListScreen';
 import MyBookingsScreen from './src/screens/MyBookingsScreen';
+import BookCourtScreen from './src/screens/BookCourtScreen';
 import { supabase } from './src/lib/supabase';
 
 const Stack = createNativeStackNavigator();
@@ -27,10 +28,11 @@ const App = () => {
     <NavigationContainer>
       <Stack.Navigator>
         {user ? (
-          <> 
+          <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Courts" component={CourtListScreen} />
             <Stack.Screen name="My Bookings" component={MyBookingsScreen} />
+            <Stack.Screen name="Book Court" component={BookCourtScreen} />
           </>
         ) : (
           <>

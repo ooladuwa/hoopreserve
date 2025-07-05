@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Button } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  Home: undefined;
+  Courts: undefined;
+  'My Bookings': undefined;
+  'Book Court': { courtId: string };
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 type Court = {
   id: string;
@@ -11,6 +22,7 @@ type Court = {
 };
 const CourtListScreen = () => {
   const [courts, setCourts] = useState<Court[]>([]);
+  const navigation = useNavigation<NavigationProp>();
 
   useEffect(() => {
     const fetchCourts = async () => {
@@ -29,23 +41,23 @@ const CourtListScreen = () => {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
     // no user found show alert
-    if (!user) { 
-        alert('Please login to book a court');
-        return;
+    if (!user) {
+      alert('Please login to book a court');
+      return;
     }
     // define booking object
     const booking = {
-        user_id: user.id,
-        court_id: courtId,
-        date: new Date().toISOString().slice(0, 10),
-        time_slot: '10am - 11am',
+      user_id: user.id,
+      court_id: courtId,
+      date: new Date().toISOString().slice(0, 10),
+      time_slot: '10am - 11am',
     }
     // insert booking into database
     const { data, error } = await supabase.from('bookings').insert(booking);
     if (error) {
-        console.error(error);
-        alert('Error booking court');
-        return;
+      console.error(error);
+      alert('Error booking court');
+      return;
     }
     alert('Court booked successfully');
   };
@@ -62,7 +74,7 @@ const CourtListScreen = () => {
             <Text>{item.location}</Text>
             <Text>Surface: {item.surface}</Text>
             <Text>{item.is_indoor ? 'Indoor' : 'Outdoor'}</Text>
-            <Button title="Book this court" onPress={() => handleBookCourt(item.id)} />
+            <Button title="Book this court" onPress={() => navigation.navigate('Book Court', { courtId: item.id })} />
           </View>
         )}
       />

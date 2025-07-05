@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { View, Text } from 'dripsy';
+import Button from '../components/Button';
+import TextInput from '../components/TextInput';
 
-const LoginScreen = ({ navigation }: any)  => {
+const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -17,35 +20,36 @@ const LoginScreen = ({ navigation }: any)  => {
   };
 
   return (
-    <View style={styles.container}>
+    <View sx={{
+      flex: 1,
+      justifyContent: 'center',
+      padding: 20,
+      backgroundColor: 'background',
+    }}>
+      <Text sx={{ fontSize: 'heading', mb: 3, textAlign: 'center' }}>
+        Log In
+      </Text>
       <TextInput
         placeholder="Email"
-        onChangeText={setEmail}
         value={email}
-        style={styles.input}
+        onChangeText={setEmail}
         autoCapitalize="none"
       />
+
       <TextInput
         placeholder="Password"
-        onChangeText={setPassword}
         value={password}
+        onChangeText={setPassword}
         secureTextEntry
-        style={styles.input}
       />
       <Button title="Log In" onPress={handleLogin} />
+      <View sx={{ height: 12 }} /> {/* Spacer */}
       <Button
-        title="Go to Signup"
+        title="Sign Up"
         onPress={() => navigation.navigate('Signup')}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20 },
-  input: {
-    borderWidth: 1, borderRadius: 5, padding: 10, marginBottom: 10,
-  },
-});
 
 export default LoginScreen

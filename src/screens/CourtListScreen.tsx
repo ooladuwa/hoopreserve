@@ -7,8 +7,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 type RootStackParamList = {
   Home: undefined;
   Courts: undefined;
-  'My Bookings': undefined;
-  'Book Court': { courtId: string };
+  My_Bookings: undefined;
+  Book_Court: { courtId: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -74,7 +74,7 @@ const CourtListScreen = () => {
             <Text>{item.location}</Text>
             <Text>Surface: {item.surface}</Text>
             <Text>{item.is_indoor ? 'Indoor' : 'Outdoor'}</Text>
-            <Button title="Book this court" onPress={() => navigation.navigate('Book Court', { courtId: item.id })} />
+            <Button title="Book this court" onPress={() => navigation.navigate('Book_Court', { courtId: item.id })} />
           </View>
         )}
       />

@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { View, Text } from 'dripsy';
 import Button from '../components/Button';
-import TextInput from '../components/TextInput';
+import Input from '../components/Input';
 
 const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -29,14 +29,14 @@ const LoginScreen = ({ navigation }: any) => {
       <Text sx={{ fontSize: 'heading', mb: 3, textAlign: 'center' }}>
         Log In
       </Text>
-      <TextInput
+      <Input
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
       />
 
-      <TextInput
+      <Input
         placeholder="Password"
         value={password}
         onChangeText={setPassword}

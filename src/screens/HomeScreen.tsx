@@ -8,8 +8,8 @@ import Button from '../components/Button';
 type RootStackParamList = {
   Home: undefined;
   Courts: undefined;
-  My_Bookings: undefined;
-  Book_Court: { courtId: string };
+  'My Bookings': undefined;
+  'Book Court': { courtId: string };
   Login: undefined;
   Signup: undefined;
 };
@@ -48,7 +48,7 @@ const HomeScreen = () => {
       }}>
         <Button title="View Courts" onPress={() => navigation.navigate('Courts')} />
         <View sx={{ height: 16 }} /> {/* Spacer */}
-        <Button title="My Bookings" onPress={() => navigation.navigate('My_Bookings')} />
+        <Button title="My Bookings" onPress={() => navigation.navigate('My Bookings')} />
         <View sx={{ height: 16 }} /> {/* Spacer */}
         <Button title="Log Out" onPress={() => handleLogout()} />
       </View>

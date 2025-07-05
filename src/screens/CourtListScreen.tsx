@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Button } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Button from '../components/Button';
+import { View, Text } from 'dripsy';
 
 type RootStackParamList = {
   Home: undefined;
   Courts: undefined;
-  My_Bookings: undefined;
-  Book_Court: { courtId: string };
+  'My Bookings': undefined;
+  'Book Court': { courtId: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -64,17 +66,17 @@ const CourtListScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Available Courts</Text>
+      <Text sx={{ fontSize: 24, marginBottom: 10 }}>Available Courts</Text>
       <FlatList
         data={courts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.name}>{item.name}</Text>
+          <View sx={{ borderWidth: 1, borderRadius: 10, padding: 15, marginBottom: 10, }}>
+            <Text sx={{ fontSize: 18, fontWeight: 'bold' }}>{item.name}</Text>
             <Text>{item.location}</Text>
             <Text>Surface: {item.surface}</Text>
             <Text>{item.is_indoor ? 'Indoor' : 'Outdoor'}</Text>
-            <Button title="Book this court" onPress={() => navigation.navigate('Book_Court', { courtId: item.id })} />
+            <Button title="Book this court" onPress={() => navigation.navigate('Book Court', { courtId: item.id })} />
           </View>
         )}
       />
@@ -84,7 +86,6 @@ const CourtListScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  title: { fontSize: 24, marginBottom: 10 },
   card: {
     borderWidth: 1, borderRadius: 10, padding: 15, marginBottom: 10,
   },

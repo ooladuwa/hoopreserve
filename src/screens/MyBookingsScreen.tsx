@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, Alert, StyleSheet } from 'react-native';
+import { FlatList, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { View, Text } from 'dripsy';
+import Button from '../components/Button';
 
 type Booking = {
   id: string;
@@ -9,7 +11,7 @@ type Booking = {
   time_slot: string;
 };
 
-export default function MyBookingsScreen() {
+const MyBookingsScreen = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   const fetchBookings = async () => {
@@ -53,13 +55,13 @@ export default function MyBookingsScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🗓 My Bookings</Text>
+    <View sx={{ flex: 1, padding: 20 }}>
+      <Text sx={{ fontSize: 24, marginBottom: 10 }}>🗓 My Bookings</Text>
       <FlatList
         data={bookings}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View sx={{ borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 8, }}>
             <Text>Court ID: {item.court_id}</Text>
             <Text>Date: {item.date}</Text>
             <Text>Time: {item.time_slot}</Text>
@@ -70,12 +72,6 @@ export default function MyBookingsScreen() {
       />
     </View>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 24, marginBottom: 10 },
-  card: {
-    borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 8,
-  },
-});
+export default MyBookingsScreen;

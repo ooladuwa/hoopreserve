@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, Button, FlatList, StyleSheet, Alert, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { TIME_SLOTS } from '../constants/timeSlots';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function BookCourtScreen({ route, navigation }: any) {
     const { courtId } = route.params;
     const [bookedSlots, setBookedSlots] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+    const formattedDate = selectedDate.toISOString().slice(0, 10);
 
     useEffect(() => {
         const fetchBookedSlots = async () => {
@@ -16,7 +19,7 @@ export default function BookCourtScreen({ route, navigation }: any) {
                 .from('bookings')
                 .select('time_slot')
                 .eq('court_id', courtId)
-                .eq('date', today);
+                .eq('date', formattedDate);
 
             if (error) {
                 console.error(error);
@@ -45,7 +48,7 @@ export default function BookCourtScreen({ route, navigation }: any) {
             {
                 user_id: user.id,
                 court_id: courtId,
-                date: today,
+                date: formattedDate,
                 time_slot: slot,
             },
         ]);
@@ -78,6 +81,22 @@ export default function BookCourtScreen({ route, navigation }: any) {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>🕒 Pick a Time Slot</Text>
+            <Button
+                title={`Change Date (${selectedDate.toDateString()})`}
+                onPress={() => setShowDatePicker(true)}
+            />
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) setSelectedDate(date);
+                    }}
+                />
+            )}
             <FlatList
                 data={TIME_SLOTS}
                 keyExtractor={(item) => item}

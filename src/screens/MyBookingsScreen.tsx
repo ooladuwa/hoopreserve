@@ -1,77 +1,118 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Alert, RefreshControl } from 'react-native';
 import { View, Text } from 'dripsy';
-import Button from '../components/Button';
+import { supabase } from '../lib/supabase';
+import Touchable from '../components/Touchable';
+import { Booking } from '../navigation/types';
+import ScrollView from '../components/ScrollView';
 
-type Booking = {
-  id: string;
-  court_id: string;
-  date: string;
-  time_slot: string;
-};
-
-const MyBookingsScreen = () => {
+export default function MyBookingsScreen() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const fetchBookings = async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+  const fetchBookings = useCallback(async () => {
+    setLoading(true);
 
-    if (!user) {
-      Alert.alert('You must be logged in.');
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) {
+      Alert.alert('Error', 'User not logged in');
+      setLoading(false);
       return;
     }
 
     const { data, error } = await supabase
       .from('bookings')
-      .select('*')
-      .eq('user_id', user.id);
+      .select(`
+        id,
+        start_time,
+        end_time,
+        court:court_id (
+          id,
+          name,
+          gym:gym_id (
+            name
+          )
+        )
+      `)
+      .eq('user_id', user.data.user.id)
+      .order('start_time', { ascending: true });
 
     if (error) {
-      console.error(error);
-      Alert.alert('Error loading bookings.');
-    } else {
+      Alert.alert('Error fetching bookings', error.message);
+    } else if (data) {
       setBookings(data);
     }
-  };
 
-  const cancelBooking = async (bookingId: string) => {
-    const { error } = await supabase
-      .from('bookings')
-      .delete()
-      .eq('id', bookingId);
-
-    if (error) {
-      Alert.alert('Error canceling booking.');
-    } else {
-      Alert.alert('Booking canceled.');
-      fetchBookings(); // reload bookings
-    }
-  };
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [fetchBookings]);
+
+  const cancelBooking = async (bookingId: string) => {
+    Alert.alert(
+      'Cancel Booking',
+      'Are you sure you want to cancel this booking?',
+      [
+        { text: 'No' },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+            if (error) {
+              Alert.alert('Error', error.message);
+            } else {
+              Alert.alert('Cancelled', 'Booking cancelled');
+              fetchBookings();
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   return (
-    <View sx={{ flex: 1, padding: 20 }}>
-      <Text sx={{ fontSize: 24, marginBottom: 10 }}>🗓 My Bookings</Text>
-      <FlatList
-        data={bookings}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View sx={{ borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 8, }}>
-            <Text>Court ID: {item.court_id}</Text>
-            <Text>Date: {item.date}</Text>
-            <Text>Time: {item.time_slot}</Text>
-            <Button title="Cancel" onPress={() => cancelBooking(item.id)} />
-          </View>
-        )}
-        ListEmptyComponent={<Text>No bookings yet.</Text>}
-      />
-    </View>
-  );
-};
+    <ScrollView
+      sx={{ flex: 1, p: 3, backgroundColor: 'background' }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchBookings} />}
+    >
+      <Text sx={{ fontSize: 'heading', mb: 3 }}>My Bookings</Text>
 
-export default MyBookingsScreen;
+      {bookings.length === 0 ? (
+        <Text sx={{ fontSize: 'body', color: 'muted' }}>No upcoming bookings.</Text>
+      ) : (
+        bookings.map((booking) => {
+          const start = new Date(booking.start_time);
+          const end = new Date(booking.end_time);
+          return (
+            <Touchable
+              key={booking.id}
+              sx={{
+                mb: 3,
+                p: 3,
+                borderWidth: 1,
+                borderColor: 'muted',
+                borderRadius: 'default',
+                backgroundColor: 'muted',
+              }}
+              onPress={() => cancelBooking(booking.id)}
+            >
+              <Text sx={{ fontWeight: 'bold', fontSize: 'subheading' }}>
+                {booking.court.name} @ {booking.court.gym.name}
+              </Text>
+              <Text>
+                {start.toLocaleDateString()} {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
+                {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+              <Text sx={{ fontSize: 12, color: 'textMuted' }}>
+                (Tap to cancel)
+              </Text>
+            </Touchable>
+          );
+        })
+      )}
+    </ScrollView>
+  );
+}

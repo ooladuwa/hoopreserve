@@ -11,8 +11,10 @@ import BookCourtScreen from './src/screens/BookCourtScreen';
 import { supabase } from './src/lib/supabase';
 import { DripsyProvider } from 'dripsy'
 import theme from './theme'
+import GymListScreen from './src/screens/GymListScreen';
+import { RootStackParamList } from './src/navigation/types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
@@ -34,6 +36,7 @@ const App = () => {
           {user ? (
             <>
               <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="Gyms" component={GymListScreen} />
               <Stack.Screen name="Courts" component={CourtListScreen} />
               <Stack.Screen name="My Bookings" component={MyBookingsScreen} />
               <Stack.Screen name="Book Court" component={BookCourtScreen} />

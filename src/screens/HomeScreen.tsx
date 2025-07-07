@@ -5,15 +5,6 @@ import { supabase } from '../lib/supabase';
 import { View, Text } from 'dripsy';
 import Button from '../components/Button';
 
-type RootStackParamList = {
-  Home: undefined;
-  Courts: undefined;
-  'My Bookings': undefined;
-  'Book Court': { courtId: string };
-  Login: undefined;
-  Signup: undefined;
-};
-
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
@@ -46,7 +37,7 @@ const HomeScreen = () => {
         padding: 20,
         backgroundColor: 'background',
       }}>
-        <Button title="View Courts" onPress={() => navigation.navigate('Courts')} />
+        <Button title="View Gyms" onPress={() => navigation.navigate('Gyms')} />
         <View sx={{ height: 16 }} /> {/* Spacer */}
         <Button title="My Bookings" onPress={() => navigation.navigate('My Bookings')} />
         <View sx={{ height: 16 }} /> {/* Spacer */}

@@ -1,120 +1,162 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, Alert, Platform } from 'react-native';
-import { supabase } from '../lib/supabase';
-import { TIME_SLOTS } from '../constants/timeSlots';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useState, useEffect } from 'react';
+import { Platform, Alert } from 'react-native';
 import { View, Text } from 'dripsy';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Button from '../components/Button';
+import { supabase } from '../lib/supabase';
 
-const BookCourtScreen = ({ route, navigation }: any) => {
+type Props = {
+    route: { params: { courtId: string } };
+};
+
+export default function BookCourtScreen({ route }: Props) {
     const { courtId } = route.params;
-    const [bookedSlots, setBookedSlots] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const formattedDate = selectedDate.toISOString().slice(0, 10);
+    const [courtName, setCourtName] = useState('');
+    const [date, setDate] = useState<Date>(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+    const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
+    const [startTime, setStartTime] = useState<Date>(new Date());
+    const [endTime, setEndTime] = useState<Date>(new Date(new Date().getTime() + 60 * 60 * 1000)); // 1 hour later
 
     useEffect(() => {
-        const fetchBookedSlots = async () => {
-            const { data, error } = await supabase
-                .from('bookings')
-                .select('time_slot')
-                .eq('court_id', courtId)
-                .eq('date', formattedDate);
+        supabase
+            .from('courts')
+            .select('name')
+            .eq('id', courtId)
+            .single()
+            .then(({ data, error }) => {
+                if (error) console.error(error);
+                else if (data) setCourtName(data.name);
+            });
+    }, [courtId]);
 
-            if (error) {
-                console.error(error);
-                Alert.alert('Error loading booked times');
+    const onChangeDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
+        setShowDatePicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setDate(selectedDate);
+            // Reset start/end times when date changes
+            setStartTime(selectedDate);
+            setEndTime(new Date(selectedDate.getTime() + 60 * 60 * 1000));
+        }
+    };
+
+    const onChangeStartTime = (event: DateTimePickerEvent, selectedTime?: Date) => {
+        setShowStartTimePicker(Platform.OS === 'ios');
+        if (selectedTime) {
+            setStartTime(selectedTime);
+            // Ensure end time is after start time
+            if (selectedTime >= endTime) {
+                setEndTime(new Date(selectedTime.getTime() + 60 * 60 * 1000));
+            }
+        }
+    };
+
+    const onChangeEndTime = (event: DateTimePickerEvent, selectedTime?: Date) => {
+        setShowEndTimePicker(Platform.OS === 'ios');
+        if (selectedTime) {
+            if (selectedTime <= startTime) {
+                Alert.alert('Error', 'End time must be after start time');
                 return;
             }
+            setEndTime(selectedTime);
+        }
+    };
 
-            const slots = data.map((b) => b.time_slot);
-            setBookedSlots(slots);
-            setLoading(false);
-        };
+    const handleBooking = async () => {
+        // Combine date with start/end time
+        const startDateTime = new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            startTime.getHours(),
+            startTime.getMinutes()
+        );
+        const endDateTime = new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            endTime.getHours(),
+            endTime.getMinutes()
+        );
 
-        fetchBookedSlots();
-    }, []);
+        if (endDateTime <= startDateTime) {
+            Alert.alert('Error', 'End time must be after start time');
+            return;
+        }
 
-    const handleBook = async (slot: string) => {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const user = sessionData?.session?.user;
-
-        if (!user) {
-            Alert.alert('You must be logged in to book.');
+        const user = await supabase.auth.getUser();
+        if (!user.data.user) {
+            Alert.alert('Error', 'User not logged in');
             return;
         }
 
         const { error } = await supabase.from('bookings').insert([
             {
-                user_id: user.id,
+                user_id: user.data.user.id,
                 court_id: courtId,
-                date: formattedDate,
-                time_slot: slot,
+                start_time: startDateTime.toISOString(),
+                end_time: endDateTime.toISOString(),
             },
         ]);
 
         if (error) {
-            console.error(error);
-            Alert.alert('Booking failed: ' + error.message);
+            Alert.alert('Booking Failed', error.message);
         } else {
-            Alert.alert('✅ Booking confirmed!');
-            navigation.goBack();
+            Alert.alert('Success', 'Court booked successfully!');
         }
     };
 
-    const renderSlot = ({ item }: { item: string }) => {
-        const isBooked = bookedSlots.includes(item);
-        return (
-            <View sx={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                padding: 12,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderRadius: 8,
-                borderColor: '#ccc',
-                alignItems: 'center',
-            }}>
-                <Text sx={{ fontSize: 16 }}>{item}</Text>
-                <Button
-                    title={isBooked ? 'Booked' : 'Book'}
-                    onPress={() => handleBook(item)}
-                    disabled={isBooked}
-                />
-            </View>
-        );
-    };
-
-    if (loading) return <Text sx={{ marginTop: 50, textAlign: 'center' }}>Loading time slots...</Text>;
-
     return (
-        <View sx={{ flex: 1, padding: 20 }}>
-            <Text sx={{ fontSize: 24, marginBottom: 10 }}>🕒 Pick a Time Slot</Text>
-            <Button
-                title={`Change Date (${selectedDate.toDateString()})`}
-                onPress={() => setShowDatePicker(true)}
-            />
+        <View sx={{ flex: 1, p: 3, backgroundColor: 'background', justifyContent: 'center' }}>
+            <Text sx={{ fontSize: 'heading', mb: 4 }}>Book {courtName}</Text>
+
+            <Button title={`Select Date: ${date.toDateString()}`} onPress={() => setShowDatePicker(true)} />
 
             {showDatePicker && (
                 <DateTimePicker
-                    value={selectedDate}
+                    value={date}
                     mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, date) => {
-                        setShowDatePicker(false);
-                        if (date) setSelectedDate(date);
-                    }}
+                    display="default"
+                    onChange={onChangeDate}
+                    minimumDate={new Date()}
                 />
             )}
-            <FlatList
-                data={TIME_SLOTS}
-                keyExtractor={(item) => item}
-                renderItem={renderSlot}
+
+            <Button
+                title={`Select Start Time: ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                onPress={() => setShowStartTimePicker(true)}
+                sx={{ mt: 3 }}
             />
+
+            {showStartTimePicker && (
+                <DateTimePicker
+                    value={startTime}
+                    mode="time"
+                    display="default"
+                    onChange={onChangeStartTime}
+                />
+            )}
+
+            <Button
+                title={`Select End Time: ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                onPress={() => setShowEndTimePicker(true)}
+                sx={{ mt: 3 }}
+            />
+
+            {showEndTimePicker && (
+                <DateTimePicker
+                    value={endTime}
+                    mode="time"
+                    display="default"
+                    onChange={onChangeEndTime}
+                    minimumDate={startTime}
+                />
+            )}
+
+            <Button title="Book Court" onPress={handleBooking} sx={{ mt: 5 }} />
         </View>
     );
 }
-
-export default BookCourtScreen;

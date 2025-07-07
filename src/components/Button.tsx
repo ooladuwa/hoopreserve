@@ -6,9 +6,10 @@ type ButtonProps = {
     title: string;
     onPress: (event: GestureResponderEvent) => void;
     disabled?: boolean;
+    sx?: any;
 };
 
-export default function Button({ title, onPress, disabled = false }: ButtonProps) {
+export default function Button({ title, onPress, disabled = false, sx: sxProp }: ButtonProps) {
     const sx = useSx();
 
     return (
@@ -23,6 +24,7 @@ export default function Button({ title, onPress, disabled = false }: ButtonProps
                 borderRadius: 'default',
                 alignItems: 'center',
                 opacity: disabled ? 0.6 : 1,
+                ...sxProp,
             })}
         >
             <Text

@@ -4,10 +4,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { View, Text } from 'dripsy';
 import Button from '../components/Button';
+import BasketballIcon from '../images/BasketballIcon';
+import { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
+  console.log('rendering home screen');
   const navigation = useNavigation<NavigationProp>();
 
   const handleLogout = async () => {
@@ -31,6 +34,9 @@ const HomeScreen = () => {
       <Text sx={{ fontSize: 'heading', mb: 4, textAlign: 'center' }}>
         Welcome to Hoop Reserve!
       </Text>
+      <View sx={{ justifyContent: 'center', alignItems: 'center' }}>
+        <BasketballIcon size={200} />
+      </View>
       <View sx={{
         flex: 1,
         justifyContent: 'center',

@@ -9,7 +9,7 @@ type Props = {
     route: { params: { courtId: string } };
 };
 
-export default function BookCourtScreen({ route }: Props) {
+const BookCourtScreen = ({ route }: Props) => {
     const { courtId } = route.params;
 
     const [courtName, setCourtName] = useState('');
@@ -47,7 +47,6 @@ export default function BookCourtScreen({ route }: Props) {
         setShowStartTimePicker(Platform.OS === 'ios');
         if (selectedTime) {
             setStartTime(selectedTime);
-            // Ensure end time is after start time
             if (selectedTime >= endTime) {
                 setEndTime(new Date(selectedTime.getTime() + 60 * 60 * 1000));
             }
@@ -65,8 +64,24 @@ export default function BookCourtScreen({ route }: Props) {
         }
     };
 
+    // Check for overlapping bookings
+    const checkAvailability = async (courtId: string, start: Date, end: Date) => {
+        const { data, error } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('court_id', courtId)
+            .or(
+                `and(start_time,lt.${end.toISOString()}),and(end_time,gt.${start.toISOString()})`
+            );
+
+        if (error) {
+            console.error('Error checking availability', error);
+            return false;
+        }
+        return data?.length === 0;
+    };
+
     const handleBooking = async () => {
-        // Combine date with start/end time
         const startDateTime = new Date(
             date.getFullYear(),
             date.getMonth(),
@@ -93,6 +108,12 @@ export default function BookCourtScreen({ route }: Props) {
             return;
         }
 
+        const available = await checkAvailability(courtId, startDateTime, endDateTime);
+        if (!available) {
+            Alert.alert('Unavailable', 'This court is already booked during that time.');
+            return;
+        }
+
         const { error } = await supabase.from('bookings').insert([
             {
                 user_id: user.data.user.id,
@@ -103,9 +124,14 @@ export default function BookCourtScreen({ route }: Props) {
         ]);
 
         if (error) {
-            Alert.alert('Booking Failed', error.message);
+            if (error.message.includes('no_overlapping_bookings')) {
+                Alert.alert('Unavailable', 'This court is already booked during that time.');
+            } else {
+                Alert.alert('Booking Failed', error.message);
+            }
         } else {
             Alert.alert('Success', 'Court booked successfully!');
+            // Optionally navigate or reset state here
         }
     };
 
@@ -160,3 +186,4 @@ export default function BookCourtScreen({ route }: Props) {
         </View>
     );
 }
+export default BookCourtScreen;

@@ -7,6 +7,8 @@ module.exports = function (api) {
         moduleName: '@env',
         path: '.env',
       }],
+      // 👇 This must come LAST and NOT as an array
+      'react-native-reanimated/plugin'
     ],
   };
 };

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { View, Text } from 'dripsy';
 import Button from '../components/Button';
 import BasketballIcon from '../images/BasketballIcon';
+import BouncingBasketball from '../images/BouncingBasketball';
 import { RootStackParamList } from '../navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -35,7 +36,8 @@ const HomeScreen = () => {
         Welcome to Hoop Reserve!
       </Text>
       <View sx={{ justifyContent: 'center', alignItems: 'center' }}>
-        <BasketballIcon size={200} />
+        {/* <BasketballIcon size={200} /> */}
+        <BouncingBasketball size={200} />
       </View>
       <View sx={{
         flex: 1,

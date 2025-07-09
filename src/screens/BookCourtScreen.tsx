@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Platform, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { View, Text } from 'dripsy';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -15,8 +15,6 @@ type Props = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-
-// Utility functions
 const snapToHour = (date: Date) => {
     const snapped = new Date(date);
     snapped.setMinutes(0, 0, 0);
@@ -29,19 +27,14 @@ const addOneHour = (date: Date) => {
     return newDate;
 };
 
-const formatTime = (date: Date) =>
-    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
 const BookCourtScreen = ({ route }: Props) => {
     const { courtId } = route.params;
+    const navigation = useNavigation<NavigationProp>();
     const [courtName, setCourtName] = useState('');
     const [date, setDate] = useState<Date>(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-    const [showEndTimePicker, setShowEndTimePicker] = useState(false);
     const [startTime, setStartTime] = useState<Date>(snapToHour(new Date()));
     const [endTime, setEndTime] = useState<Date>(addOneHour(snapToHour(new Date())));
-    const navigation = useNavigation<NavigationProp>();
+    const [pickerMode, setPickerMode] = useState<'date' | 'start' | 'end' | null>(null);
 
     useEffect(() => {
         supabase
@@ -55,48 +48,30 @@ const BookCourtScreen = ({ route }: Props) => {
             });
     }, [courtId]);
 
-    const onChangeDate = useCallback((event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowDatePicker(Platform.OS === 'ios');
-        if (selectedDate) {
-            const snapped = snapToHour(selectedDate);
+    const handleConfirm = (selectedDate: Date) => {
+        const snapped = snapToHour(selectedDate);
+        if (pickerMode === 'date') {
             setDate(snapped);
             setStartTime(snapped);
             setEndTime(addOneHour(snapped));
-        }
-    }, []);
-
-    const onChangeStartTime = useCallback((event: DateTimePickerEvent, selectedTime?: Date) => {
-        setShowStartTimePicker(Platform.OS === 'ios');
-        if (selectedTime) {
-            const snappedStart = snapToHour(selectedTime);
-            const snappedEnd = addOneHour(snappedStart);
-            setStartTime(snappedStart);
-            setEndTime(snappedEnd);
-        }
-    }, []);
-
-    const onChangeEndTime = useCallback((event: DateTimePickerEvent, selectedTime?: Date) => {
-        setShowEndTimePicker(Platform.OS === 'ios');
-        if (selectedTime) {
-            const snappedEnd = snapToHour(selectedTime);
-
-            const maxEndTime = new Date(startTime.getTime());
-            maxEndTime.setHours(maxEndTime.getHours() + 2);
-
-            if (snappedEnd <= startTime) {
+        } else if (pickerMode === 'start') {
+            setStartTime(snapped);
+            setEndTime(addOneHour(snapped));
+        } else if (pickerMode === 'end') {
+            const maxEnd = new Date(startTime.getTime());
+            maxEnd.setHours(maxEnd.getHours() + 2);
+            if (snapped <= startTime) {
                 Alert.alert('Error', 'End time must be after start time');
                 return;
             }
-
-            if (snappedEnd > maxEndTime) {
+            if (snapped > maxEnd) {
                 Alert.alert('Error', 'Bookings cannot exceed 2 hours');
                 return;
             }
-
-            setEndTime(snappedEnd);
+            setEndTime(snapped);
         }
-    }, [startTime]);
-
+        setPickerMode(null);
+    };
 
     const checkAvailability = async (courtId: string, start: Date, end: Date) => {
         const { data, error } = await supabase
@@ -113,8 +88,6 @@ const BookCourtScreen = ({ route }: Props) => {
 
         return data?.length === 0;
     };
-
-
 
     const handleBooking = async () => {
         const startDateTime = new Date(
@@ -165,69 +138,34 @@ const BookCourtScreen = ({ route }: Props) => {
         ]);
 
         if (error) {
-            if (error.message.includes('no_overlapping_bookings')) {
-                Alert.alert('Unavailable', 'This court is already booked during that time.');
-            } else {
-                Alert.alert('Booking Failed', error.message);
-            }
+            Alert.alert('Booking Failed', error.message);
         } else {
             Alert.alert('Success', 'Court booked successfully!');
             navigation.navigate('My Bookings');
         }
     };
 
-    // ✅ JSX render goes here — not inside handleBooking
     return (
         <View sx={{ flex: 1, p: 3, backgroundColor: 'background', justifyContent: 'center' }}>
             <Text sx={{ fontSize: 'heading', mb: 4, textAlign: 'center' }}>Book {courtName}</Text>
 
-            <Button title={`Select Date: ${format(date, 'EEE, MMM d, yyyy')}`} onPress={() => setShowDatePicker(true)} />
+            <Button title={`Select Date: ${format(date, 'MM/dd/yyyy')}`} onPress={() => setPickerMode('date')} />
+            <Button title={`Select Start Time: ${format(startTime, 'hh:mm a')}`} onPress={() => setPickerMode('start')} sx={{ mt: 3 }} />
+            <Button title={`Select End Time: ${format(endTime, 'hh:mm a')}`} onPress={() => setPickerMode('end')} sx={{ mt: 3 }} />
 
-            {showDatePicker && (
-                <DateTimePicker
-                    value={date}
-                    mode="date"
-                    display="default"
-                    onChange={onChangeDate}
-                    minimumDate={new Date()}
-                />
-            )}
-
-            <Button
-                title={`Select Start Time: ${formatTime(startTime)}`}
-                onPress={() => setShowStartTimePicker(true)}
-                sx={{ mt: 3 }}
+            <DateTimePickerModal
+                isVisible={pickerMode !== null}
+                mode={pickerMode === 'date' ? 'date' : 'time'}
+                date={pickerMode === 'date' ? date : pickerMode === 'start' ? startTime : endTime}
+                onConfirm={handleConfirm}
+                onCancel={() => setPickerMode(null)}
+                minimumDate={pickerMode === 'date' ? new Date() : undefined}
             />
-
-            {showStartTimePicker && (
-                <DateTimePicker
-                    value={startTime}
-                    mode="time"
-                    display="default"
-                    onChange={onChangeStartTime}
-                />
-            )}
-
-            <Button
-                title={`Select End Time: ${formatTime(endTime)}`}
-                onPress={() => setShowEndTimePicker(true)}
-                sx={{ mt: 3 }}
-            />
-
-            {showEndTimePicker && (
-                <DateTimePicker
-                    value={endTime}
-                    mode="time"
-                    display="default"
-                    onChange={onChangeEndTime}
-                />
-            )}
 
             <View sx={{ backgroundColor: 'background', justifyContent: 'flex-end', flex: 1 }}>
                 <Text sx={{ mt: 2, mb: 1, textAlign: 'center' }}>
                     Duration: {(endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)} hour(s)
                 </Text>
-
                 <Button title="Book Court" onPress={handleBooking} sx={{ mb: 25 }} />
             </View>
         </View>

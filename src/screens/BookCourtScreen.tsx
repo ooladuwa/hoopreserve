@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import GotNextPosition from '../components/GotNextPosition';
 
 type Props = {
     route: { params: { courtId: string } };
@@ -40,7 +41,32 @@ const BookCourtScreen = ({ route }: Props) => {
     const [hasActiveQueue, setHasActiveQueue] = useState(false);
     const [queueId, setQueueId] = useState<string | null>(null);
     const [isBookedSoon, setIsBookedSoon] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [joined, setJoined] = useState(false);
 
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data, error }) => {
+            if (error || !data.user) {
+                console.log('User not authenticated:', error);
+            } else {
+                console.log('Authenticated user ID:', data.user.id);
+            }
+        });
+    }, []);
+
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data, error }) => {
+            if (data?.session?.user) {
+                console.log('User loaded:', data.session.user.id);
+            } else {
+                console.log('No session found.');
+            }
+        });
+    });
+
+    // fetch court id
     useEffect(() => {
         supabase
             .from('courts')
@@ -53,11 +79,31 @@ const BookCourtScreen = ({ route }: Props) => {
             });
     }, [courtId]);
 
+    // fetch booking and queue status
     useEffect(() => {
         console.log('Checking active queue and booking status in useEffect');
         checkActiveQueue();
         checkBookingStatus();
-    }, [hasActiveQueue, isBookedSoon]);
+    }, [isBookedSoon, hasActiveQueue]);
+
+    // fetch user id
+    useEffect(() => {
+        const getUser = async () => {
+            const {
+                data: { user },
+                error,
+            } = await supabase.auth.getUser();
+
+            if (error || !user) {
+                console.error('Error fetching user:', error);
+                return;
+            }
+
+            setUserId(user.id);
+        };
+
+        getUser();
+    }, []);
 
     const checkActiveQueue = async () => {
         const { data, error } = await supabase
@@ -82,6 +128,95 @@ const BookCourtScreen = ({ route }: Props) => {
             console.log('No active queue found for court');
 
             setQueueId(null);
+        }
+    };
+
+    const handleJoinQueue = async () => {
+        // check if court id and user id are valid
+        if (!courtId || !userId) {
+            Alert.alert('Error', 'Court or user information is missing.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            // Step 1: Check for active queue
+            let { data: queue, error: queueError } = await supabase
+                .from('got_next_queues')
+                .select('*')
+                .eq('court_id', courtId)
+                .eq('is_active', true)
+                .limit(1)
+                .single();
+
+            if (queueError && queueError.code !== 'PGRST116') { // PGRST116 = no rows
+                throw queueError;
+            }
+
+            // Step 2: Create queue if not exists
+            if (!queue) {
+                const now = new Date().toISOString();
+                const { data: newQueue, error: createError } = await supabase
+                    .from('got_next_queues')
+                    .insert([{ court_id: courtId, start_time: now, is_active: true, user_id: userId }])
+                    .select()
+                    .single();
+
+                if (createError) throw createError;
+
+                queue = newQueue;
+            }
+
+            // Step 3: Add user to got_next_players
+            const { error: playerError } = await supabase.from('got_next_players').insert({
+                queue_id: queue.id,
+                user_id: userId,
+                joined_at: new Date().toISOString(),
+                notified: false,
+            });
+
+            if (playerError) throw playerError;
+
+            Alert.alert('Success', 'You have joined the Got Next queue!');
+
+            // Refresh state/UI
+            await checkActiveQueue();
+            setJoined(true);
+        } catch (error) {
+            console.error('Error joining queue:', error);
+            Alert.alert('Error', 'Failed to join the queue.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLeaveQueue = async () => {
+        if (!queueId || !userId) {
+            Alert.alert('Error', 'Queue or user information is missing.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            const { error } = await supabase
+                .from('got_next_players')
+                .delete()
+                .eq('queue_id', queueId)
+                .eq('user_id', userId);
+
+            if (error) throw error;
+            Alert.alert('Success', 'You have left the Got Next queue.');
+
+            // Refresh state/UI
+            setJoined(false);
+            await checkActiveQueue();
+        } catch (error) {
+            console.error('Error leaving queue:', error);
+            Alert.alert('Error', 'Failed to leave the queue.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -223,11 +358,19 @@ const BookCourtScreen = ({ route }: Props) => {
 
             <View sx={{ backgroundColor: 'background', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
                 {!isBookedSoon && !hasActiveQueue && (
-                    <Button title="Join Got Next Queue" onPress={console.log('handleJoinQueue')} />
+                    <Button title="Join Got Next Queue" onPress={handleJoinQueue} disabled={!userId} />
                 )}
 
-                {!isBookedSoon && hasActiveQueue && (
+                {/* {!isBookedSoon && hasActiveQueue && (
                     <Button title="View Got Next Queue" onPress={() => console.log(navigation.navigate('GotNextQueue', { queueId }))} />
+                )} */}
+
+                {!isBookedSoon && hasActiveQueue && joined && (
+                    <Button title="Leave Got Next Queue" onPress={handleLeaveQueue} sx={{ color: "error" }} />
+                )}
+
+                {hasActiveQueue && joined && (
+                    <GotNextPosition courtId={courtId} />
                 )}
 
             </View>

@@ -29,12 +29,17 @@ const addOneHour = (date: Date) => {
 
 const BookCourtScreen = ({ route }: Props) => {
     const { courtId } = route.params;
+    console.log('Court ID:', courtId);
+
     const navigation = useNavigation<NavigationProp>();
     const [courtName, setCourtName] = useState('');
     const [date, setDate] = useState<Date>(new Date());
     const [startTime, setStartTime] = useState<Date>(snapToHour(new Date()));
     const [endTime, setEndTime] = useState<Date>(addOneHour(snapToHour(new Date())));
     const [pickerMode, setPickerMode] = useState<'date' | 'start' | 'end' | null>(null);
+    const [hasActiveQueue, setHasActiveQueue] = useState(false);
+    const [queueId, setQueueId] = useState<string | null>(null);
+    const [isBookedSoon, setIsBookedSoon] = useState(false);
 
     useEffect(() => {
         supabase
@@ -47,6 +52,60 @@ const BookCourtScreen = ({ route }: Props) => {
                 else if (data) setCourtName(data.name);
             });
     }, [courtId]);
+
+    useEffect(() => {
+        console.log('Checking active queue and booking status in useEffect');
+        checkActiveQueue();
+        checkBookingStatus();
+    }, [hasActiveQueue, isBookedSoon]);
+
+    const checkActiveQueue = async () => {
+        const { data, error } = await supabase
+            .from('got_next_queues')
+            .select('id')
+            .eq('court_id', courtId) // make sure you have the court.id from props/route
+            .eq('is_active', true)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error checking active queue', error);
+            return;
+        }
+
+        if (data) {
+            setHasActiveQueue(true);
+            console.log('Active queue found:', data);
+
+            setQueueId(data.id);
+        } else {
+            setHasActiveQueue(false);
+            console.log('No active queue found for court');
+
+            setQueueId(null);
+        }
+    };
+
+    const checkBookingStatus = async () => {
+        const now = new Date();
+        const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+        const { data, error } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('court_id', courtId)
+            .lt('start_time', twoHoursFromNow.toISOString())
+            .gt('end_time', now.toISOString())
+            .limit(1);
+
+        if (error) {
+            console.error('Error checking booking status', error);
+            return;
+        }
+        setIsBookedSoon(!!data?.length);
+        console.log('Bookings in next 2 hours:', data);
+        console.log('Is booked soon:', !!data?.length);
+
+    };
 
     const handleConfirm = (selectedDate: Date) => {
         const snapped = snapToHour(selectedDate);
@@ -161,6 +220,17 @@ const BookCourtScreen = ({ route }: Props) => {
                 onCancel={() => setPickerMode(null)}
                 minimumDate={pickerMode === 'date' ? new Date() : undefined}
             />
+
+            <View sx={{ backgroundColor: 'background', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                {!isBookedSoon && !hasActiveQueue && (
+                    <Button title="Join Got Next Queue" onPress={console.log('handleJoinQueue')} />
+                )}
+
+                {!isBookedSoon && hasActiveQueue && (
+                    <Button title="View Got Next Queue" onPress={() => console.log(navigation.navigate('GotNextQueue', { queueId }))} />
+                )}
+
+            </View>
 
             <View sx={{ backgroundColor: 'background', justifyContent: 'flex-end', flex: 1 }}>
                 <Text sx={{ mt: 2, mb: 1, textAlign: 'center' }}>

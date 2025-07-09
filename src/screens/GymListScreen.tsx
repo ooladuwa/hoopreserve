@@ -8,7 +8,7 @@ import { RootStackParamList, Gym } from '../navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-export default function GymListScreen() {
+const GymListScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const [gyms, setGyms] = useState<Gym[]>([]);
 
@@ -42,4 +42,6 @@ export default function GymListScreen() {
             ))}
         </ScrollView>
     );
-}
+};
+
+export default GymListScreen;

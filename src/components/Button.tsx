@@ -9,7 +9,7 @@ type ButtonProps = {
     sx?: any;
 };
 
-export default function Button({ title, onPress, disabled = false, sx: sxProp }: ButtonProps) {
+const Button = ({ title, onPress, disabled = false, sx: sxProp }: ButtonProps) => {
     const sx = useSx();
 
     return (
@@ -38,4 +38,6 @@ export default function Button({ title, onPress, disabled = false, sx: sxProp }:
             </Text>
         </TouchableOpacity>
     );
-}
+};
+
+export default Button;

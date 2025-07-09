@@ -7,11 +7,11 @@ import Button from '../components/Button';
 import BasketballIcon from '../images/BasketballIcon';
 import BouncingBasketball from '../images/BouncingBasketball';
 import { RootStackParamList } from '../navigation/types';
+import { TouchableOpacity } from 'react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen = () => {
-  console.log('rendering home screen');
   const navigation = useNavigation<NavigationProp>();
 
   const handleLogout = async () => {
@@ -20,7 +20,6 @@ const HomeScreen = () => {
       console.error('Logout error:', error.message);
       alert('Logout failed');
     } else {
-      // Optionally navigate to login screen or clear any state
       console.log('Logged out');
     }
   };
@@ -49,7 +48,15 @@ const HomeScreen = () => {
         <View sx={{ height: 16 }} /> {/* Spacer */}
         <Button title="My Bookings" onPress={() => navigation.navigate('My Bookings')} />
         <View sx={{ height: 16 }} /> {/* Spacer */}
-        <Button title="Log Out" onPress={() => handleLogout()} />
+        <View sx={{
+          flex: 1,
+          justifyContent: 'center',
+          padding: 20,
+          backgroundColor: 'background',
+        }}></View>
+        <TouchableOpacity onPress={() => handleLogout()}>
+          <Text sx={{ color: 'error', fontSize: 16, textAlign: 'center' }}>Logout</Text>
+        </TouchableOpacity>
       </View>
     </View >
   );

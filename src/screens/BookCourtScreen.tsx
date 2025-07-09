@@ -1,25 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Platform, Alert } from 'react-native';
 import { View, Text } from 'dripsy';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
+import { format } from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 
 type Props = {
     route: { params: { courtId: string } };
 };
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+
+// Utility functions
+const snapToHour = (date: Date) => {
+    const snapped = new Date(date);
+    snapped.setMinutes(0, 0, 0);
+    return snapped;
+};
+
+const addOneHour = (date: Date) => {
+    const newDate = new Date(date);
+    newDate.setHours(newDate.getHours() + 1);
+    return newDate;
+};
+
+const formatTime = (date: Date) =>
+    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
 const BookCourtScreen = ({ route }: Props) => {
     const { courtId } = route.params;
-
     const [courtName, setCourtName] = useState('');
     const [date, setDate] = useState<Date>(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showStartTimePicker, setShowStartTimePicker] = useState(false);
     const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-
-    const [startTime, setStartTime] = useState<Date>(new Date());
-    const [endTime, setEndTime] = useState<Date>(new Date(new Date().getTime() + 60 * 60 * 1000)); // 1 hour later
+    const [startTime, setStartTime] = useState<Date>(snapToHour(new Date()));
+    const [endTime, setEndTime] = useState<Date>(addOneHour(snapToHour(new Date())));
+    const navigation = useNavigation<NavigationProp>();
 
     useEffect(() => {
         supabase
@@ -33,53 +55,66 @@ const BookCourtScreen = ({ route }: Props) => {
             });
     }, [courtId]);
 
-    const onChangeDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    const onChangeDate = useCallback((event: DateTimePickerEvent, selectedDate?: Date) => {
         setShowDatePicker(Platform.OS === 'ios');
         if (selectedDate) {
-            setDate(selectedDate);
-            // Reset start/end times when date changes
-            setStartTime(selectedDate);
-            setEndTime(new Date(selectedDate.getTime() + 60 * 60 * 1000));
+            const snapped = snapToHour(selectedDate);
+            setDate(snapped);
+            setStartTime(snapped);
+            setEndTime(addOneHour(snapped));
         }
-    };
+    }, []);
 
-    const onChangeStartTime = (event: DateTimePickerEvent, selectedTime?: Date) => {
+    const onChangeStartTime = useCallback((event: DateTimePickerEvent, selectedTime?: Date) => {
         setShowStartTimePicker(Platform.OS === 'ios');
         if (selectedTime) {
-            setStartTime(selectedTime);
-            if (selectedTime >= endTime) {
-                setEndTime(new Date(selectedTime.getTime() + 60 * 60 * 1000));
-            }
+            const snappedStart = snapToHour(selectedTime);
+            const snappedEnd = addOneHour(snappedStart);
+            setStartTime(snappedStart);
+            setEndTime(snappedEnd);
         }
-    };
+    }, []);
 
-    const onChangeEndTime = (event: DateTimePickerEvent, selectedTime?: Date) => {
+    const onChangeEndTime = useCallback((event: DateTimePickerEvent, selectedTime?: Date) => {
         setShowEndTimePicker(Platform.OS === 'ios');
         if (selectedTime) {
-            if (selectedTime <= startTime) {
+            const snappedEnd = snapToHour(selectedTime);
+
+            const maxEndTime = new Date(startTime.getTime());
+            maxEndTime.setHours(maxEndTime.getHours() + 2);
+
+            if (snappedEnd <= startTime) {
                 Alert.alert('Error', 'End time must be after start time');
                 return;
             }
-            setEndTime(selectedTime);
-        }
-    };
 
-    // Check for overlapping bookings
+            if (snappedEnd > maxEndTime) {
+                Alert.alert('Error', 'Bookings cannot exceed 2 hours');
+                return;
+            }
+
+            setEndTime(snappedEnd);
+        }
+    }, [startTime]);
+
+
     const checkAvailability = async (courtId: string, start: Date, end: Date) => {
         const { data, error } = await supabase
             .from('bookings')
             .select('id')
             .eq('court_id', courtId)
-            .or(
-                `and(start_time,lt.${end.toISOString()}),and(end_time,gt.${start.toISOString()})`
-            );
+            .lt('start_time', end.toISOString())
+            .gt('end_time', start.toISOString());
 
         if (error) {
             console.error('Error checking availability', error);
             return false;
         }
+
         return data?.length === 0;
     };
+
+
 
     const handleBooking = async () => {
         const startDateTime = new Date(
@@ -99,6 +134,12 @@ const BookCourtScreen = ({ route }: Props) => {
 
         if (endDateTime <= startDateTime) {
             Alert.alert('Error', 'End time must be after start time');
+            return;
+        }
+
+        const durationInHours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
+        if (durationInHours > 2) {
+            Alert.alert('Error', 'Bookings cannot exceed 2 hours');
             return;
         }
 
@@ -131,15 +172,16 @@ const BookCourtScreen = ({ route }: Props) => {
             }
         } else {
             Alert.alert('Success', 'Court booked successfully!');
-            // Optionally navigate or reset state here
+            navigation.navigate('My Bookings');
         }
     };
 
+    // ✅ JSX render goes here — not inside handleBooking
     return (
         <View sx={{ flex: 1, p: 3, backgroundColor: 'background', justifyContent: 'center' }}>
-            <Text sx={{ fontSize: 'heading', mb: 4 }}>Book {courtName}</Text>
+            <Text sx={{ fontSize: 'heading', mb: 4, textAlign: 'center' }}>Book {courtName}</Text>
 
-            <Button title={`Select Date: ${date.toDateString()}`} onPress={() => setShowDatePicker(true)} />
+            <Button title={`Select Date: ${format(date, 'EEE, MMM d, yyyy')}`} onPress={() => setShowDatePicker(true)} />
 
             {showDatePicker && (
                 <DateTimePicker
@@ -152,7 +194,7 @@ const BookCourtScreen = ({ route }: Props) => {
             )}
 
             <Button
-                title={`Select Start Time: ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                title={`Select Start Time: ${formatTime(startTime)}`}
                 onPress={() => setShowStartTimePicker(true)}
                 sx={{ mt: 3 }}
             />
@@ -167,7 +209,7 @@ const BookCourtScreen = ({ route }: Props) => {
             )}
 
             <Button
-                title={`Select End Time: ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                title={`Select End Time: ${formatTime(endTime)}`}
                 onPress={() => setShowEndTimePicker(true)}
                 sx={{ mt: 3 }}
             />
@@ -178,12 +220,18 @@ const BookCourtScreen = ({ route }: Props) => {
                     mode="time"
                     display="default"
                     onChange={onChangeEndTime}
-                    minimumDate={startTime}
                 />
             )}
 
-            <Button title="Book Court" onPress={handleBooking} sx={{ mt: 5 }} />
+            <View sx={{ backgroundColor: 'background', justifyContent: 'flex-end', flex: 1 }}>
+                <Text sx={{ mt: 2, mb: 1, textAlign: 'center' }}>
+                    Duration: {(endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)} hour(s)
+                </Text>
+
+                <Button title="Book Court" onPress={handleBooking} sx={{ mb: 25 }} />
+            </View>
         </View>
     );
-}
+};
+
 export default BookCourtScreen;

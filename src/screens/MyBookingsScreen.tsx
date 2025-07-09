@@ -5,8 +5,9 @@ import { supabase } from '../lib/supabase';
 import Touchable from '../components/Touchable';
 import { Booking } from '../navigation/types';
 import ScrollView from '../components/ScrollView';
+import { format } from 'date-fns';
 
-export default function MyBookingsScreen() {
+const MyBookingsScreen = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +41,7 @@ export default function MyBookingsScreen() {
     if (error) {
       Alert.alert('Error fetching bookings', error.message);
     } else if (data) {
+      console.log(JSON.stringify(data, null, 2));
       setBookings(data);
     }
 
@@ -102,11 +104,11 @@ export default function MyBookingsScreen() {
               <Text sx={{ fontWeight: 'bold', fontSize: 'subheading' }}>
                 {booking.court.name} @ {booking.court.gym.name}
               </Text>
-              <Text>
-                {start.toLocaleDateString()} {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
-                {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <Text sx={{ fontSize: 12, mt: 2, mb: 2 }}>
+                {format(start, 'MM/dd/yyyy')} {format(start, 'hh:mm a')} -{' '}
+                {format(end, 'hh:mm a')}
               </Text>
-              <Text sx={{ fontSize: 12, color: 'textMuted' }}>
+              <Text sx={{ fontSize: 12, color: 'error' }}>
                 (Tap to cancel)
               </Text>
             </Touchable>
@@ -115,4 +117,6 @@ export default function MyBookingsScreen() {
       )}
     </ScrollView>
   );
-}
+};
+
+export default MyBookingsScreen;

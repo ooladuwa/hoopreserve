@@ -26,7 +26,7 @@ const LoginScreen = ({ navigation }: any) => {
       padding: 20,
       backgroundColor: 'background',
     }}>
-      <Text sx={{ fontSize: 'heading', mb: 3, textAlign: 'center' }}>
+      <Text sx={{ fontSize: 'heading', mb: 8, textAlign: 'center' }}>
         Log In
       </Text>
       <Input

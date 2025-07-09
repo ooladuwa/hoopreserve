@@ -11,7 +11,7 @@ import BasketballIcon from './BasketballIcon';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-export default function BouncingBasketball({ size = 100 }) {
+const BouncingBasketball = ({ size = 100 }) => {
     const bounce = useSharedValue(0);
 
     useEffect(() => {
@@ -34,4 +34,6 @@ export default function BouncingBasketball({ size = 100 }) {
             <BasketballIcon size={size} />
         </AnimatedView>
     );
-}
+};
+
+export default BouncingBasketball;

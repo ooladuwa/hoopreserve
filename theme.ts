@@ -8,6 +8,7 @@ const theme = makeTheme({
         background: '#fff',
         text: '#000',
         muted: '#f6f6f6',
+        error: 'red',
     },
     space: {
         1: 4,
